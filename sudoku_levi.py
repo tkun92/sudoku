@@ -5,6 +5,7 @@ from tqdm import tqdm
 verbose = False
 debug = True
 intermediate = False
+write_output = True
 
 
 def read_input(file_name):
@@ -40,28 +41,37 @@ def read_input(file_name):
 
 def solve_sudokus(listsudoku):
     num_of_done = 0
-    with open("output", "w") as output:
+
+    if write_output:
+        with open("output", "w") as output:
+            for counter, item in enumerate(tqdm(listsudoku)):
+                sudoku = Sudoku()
+                sudoku.fill_example(item)
+                sudoku.check_table()
+                output.writelines("Counter:" + str(counter) + "\n")
+                isitdone = sudoku.isitdone()
+                output.writelines(str(isitdone) + "\n")
+
+                if isitdone:
+                    num_of_done += 1
+
+                for i in range(9):
+                    for j in range(9):
+                        output.writelines(str(sudoku._table[i][j].final_number))
+                    output.writelines("\n")
+                output.writelines("##################\n")
+                for i in range(9):
+                    for j in range(9):
+                        output.writelines(str(sudoku.table[i][j].possibilities))
+                    output.writelines("\n")
+                output.writelines("\n")
+    else:
         for counter, item in enumerate(tqdm(listsudoku)):
             sudoku = Sudoku()
             sudoku.fill_example(item)
             sudoku.check_table()
-            output.writelines("Counter:" + str(counter) + "\n")
-            isitdone = sudoku.isitdone()
-            output.writelines(str(isitdone) + "\n")
-
-            if isitdone:
+            if sudoku.isitdone():
                 num_of_done += 1
-
-            for i in range(9):
-                for j in range(9):
-                    output.writelines(str(sudoku._table[i][j].final_number))
-                output.writelines("\n")
-            output.writelines("##################\n")
-            for i in range(9):
-                for j in range(9):
-                    output.writelines(str(sudoku.table[i][j].possibilities))
-                output.writelines("\n")
-            output.writelines("\n")
 
     print("{} % of the sudokus are solved".format(num_of_done / len(listsudoku) * 100))
 
