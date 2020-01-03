@@ -4,12 +4,13 @@ from tqdm import tqdm
 
 verbose = False
 debug = True
-intermediate = False
-write_output = True
+intermediate = True
+write_output = False
 
 
 def read_input(file_name):
     sudokus = list()
+    print("Read sudokus from " + file_name)
     with open(file_name, "r") as file:
         while True:
             line = file.readline()
@@ -438,8 +439,8 @@ if __name__ == "__main__":
     #                  [None, None, None, None, 8, None, None, None, 1],
     #                  [7, None, None, 9, 3, None, None, 6, None],
     #                  [None, None, None, None, None, None, 4, None, 8]]
-
-    listsudoku = read_input("input")
+    file_name = "inputs/input_easy_none"
+    listsudoku = read_input(file_name)
     solve_sudokus(listsudoku)
 
     print("Done!!!")
