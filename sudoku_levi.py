@@ -1,6 +1,6 @@
-import numpy as np
 from copy import deepcopy
 from termcolor import colored
+from tqdm import tqdm
 
 verbose = False
 debug = True
@@ -37,10 +37,10 @@ def read_input(file_name):
     return listsudoku
 
 
-def make_output(listsudoku):
+def solve_sudokus(listsudoku):
     num_of_done = 0
     with open("output", "w") as output:
-        for counter, item in enumerate(listsudoku):
+        for counter, item in enumerate(tqdm(listsudoku)):
             sudoku = Sudoku()
             sudoku.fill_example(item)
             sudoku.check_table()
@@ -124,18 +124,16 @@ class Sudoku(object):
                 cell.col_index = j
                 cell.table = self
 
-    def fill_example(self, examplee_table):
-        # print(example_table)
+    def fill_example(self, example_table):
         for i, row in enumerate(self._table):
             for j, number in enumerate(row):
-                # print("i:" + str(i) + " j:" + str(j))
-                if examplee_table[i][j] == ".":
+                if example_table[i][j] == ".":
                     continue
-                if examplee_table[i][j] is not None:
-                    self._table[i][j].set_final(examplee_table[i][j])
+                if example_table[i][j] is not None:
+                    self._table[i][j].set_final(example_table[i][j])
         if verbose:
             print("End of filling example.")
-            print(examplee_table)
+            print(example_table)
             self.print_possibilities()
             print("#################################################################")
 
@@ -162,6 +160,8 @@ class Sudoku(object):
     def table(self):
         return self._table
 
+    """Basic elimination"""
+
     def eliminate_possibilities(self, i, j, num):
         self.eliminate_possibilities_row(i, j, num)
         self.eliminate_possibilities_col(i, j, num)
@@ -184,13 +184,7 @@ class Sudoku(object):
                 if cell.cube_id == cube_id and not (row_index == i and col_index == j) and num in cell.possibilities:
                     cell.remove_possibility(num)
 
-    def table_possibilities_elimination(self):
-        for row_index, row in enumerate(self._table):
-            for col_index, cell in enumerate(row):
-                if len(cell.possibilities) == 1:
-                    self.eliminate_possibilities(row_index, col_index, cell.possibilities[0])
-                else:
-                    self.intermediate_eliminate_possibilities(row_index, col_index)
+    """Intermediate elimination"""
 
     def intermediate_eliminate_possibilities(self, i, j):
         self.intermediate_elimination_row(i, j)
@@ -247,6 +241,83 @@ class Sudoku(object):
                                 len(cell.possibilities) > 1:
                             cell.remove_possibility(number)
 
+    """Check for single number"""
+
+    def check_single(self, num):
+        for row_index in range(9):
+            self.check_row(row_index, num)
+
+        for col_index in range(9):
+            self.check_col(col_index, num)
+
+        for cube_id in range(9):
+            self.check_cube(cube_id, num)
+
+    def check_row(self, row_index, num):
+        num_counter = 0
+        col_index = None
+        for index, cell in enumerate(self._table[row_index]):
+            if num in cell.possibilities:
+                num_counter += 1
+                col_index = index
+
+        assert num_counter > 0
+
+        # In this case we find a new number only in one cell in this row.
+        if num_counter == 1 and len(self._table[row_index][col_index].possibilities) > 1:
+            self._table[row_index][col_index].possibilities = [num]
+            self.changed = True
+
+    def check_col(self, col_index, num):
+        num_counter = 0
+        row_index = None
+
+        for index in range(len(self._table)):
+            if num in self._table[index][col_index].possibilities:
+                num_counter += 1
+                row_index = index
+
+        assert num_counter > 0
+
+        # In this case we find a new number only in one cell in this column.
+        if num_counter == 1 and len(self._table[row_index][col_index].possibilities) > 1:
+            self._table[row_index][col_index].possibilities = [num]
+            self.changed = True
+
+    def check_cube(self, cube_id, num):
+        num_counter = 0
+        row_index = None
+        col_index = None
+
+        # cube_id = (i // 3) * 3 + (j // 3)
+        base_row_index = (cube_id // 3) * 3
+        base_col_index = (cube_id % 3) * 3
+
+        for i in range(base_row_index, base_row_index + 3):
+            for j in range(base_col_index, base_col_index + 3):
+                if num in self._table[i][j].possibilities:
+                    num_counter += 1
+                    row_index = i
+                    col_index = j
+
+        assert num_counter > 0
+
+        # In this case we find a new number only in one cell in this cube.
+        if num_counter == 1 and len(self._table[row_index][col_index].possibilities) > 1:
+            self._table[row_index][col_index].possibilities = [num]
+            self.changed = True
+
+    def table_possibilities_elimination(self):
+        for row_index, row in enumerate(self._table):
+            for col_index, cell in enumerate(row):
+                if len(cell.possibilities) == 1:
+                    self.eliminate_possibilities(row_index, col_index, cell.possibilities[0])
+                else:
+                    self.intermediate_eliminate_possibilities(row_index, col_index)
+
+        for num in range(1, 10):
+            self.check_single(num)
+
     def check_table(self):
         while True:
             self.changed = False
@@ -291,7 +362,6 @@ if __name__ == "__main__":
     #                  [None, None, None, None, None, None, 4, None, 8]]
 
     listsudoku = read_input("input")
-    make_output(listsudoku)
+    solve_sudokus(listsudoku)
 
     print("Done!!!")
-
