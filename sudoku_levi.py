@@ -2,8 +2,67 @@ import numpy as np
 from copy import deepcopy
 from termcolor import colored
 
-verbose = True
+verbose = False
 debug = True
+
+
+def read_input(file_name):
+    sudokus = list()
+    with open(file_name, "r") as file:
+        while True:
+            line = file.readline()
+            if not line:
+                break
+            if line == "\n":
+                continue
+            sudokus.append(line.strip("\n"))
+
+    actualsudoku = list()
+    listsudoku = list()
+    for item in sudokus:
+        for i in range(0, len(item), 9):
+            lines = item[i:i + 9]
+            add = list()
+            for index in lines:
+                if index == ".":
+                    add.append(None)
+                else:
+                    add.append(int(index))
+
+            actualsudoku.append(add)
+
+        listsudoku.append(actualsudoku)
+
+        actualsudoku = []
+    return listsudoku
+
+
+def make_output(listsudoku):
+    num_of_done = 0
+    with open("output", "w") as output:
+        for counter, item in enumerate(listsudoku):
+            sudoku = Sudoku()
+            sudoku.fill_example(item)
+            sudoku.check_table()
+            output.writelines("Counter:" + str(counter) + "\n")
+            isitdone = sudoku.isitdone()
+            output.writelines(str(isitdone) + "\n")
+
+            if isitdone:
+                num_of_done += 1
+
+            for i in range(9):
+                for j in range(9):
+                    output.writelines(str(sudoku._table[i][j].final_number))
+                output.writelines("\n")
+            output.writelines("##################\n")
+            for i in range(9):
+                for j in range(9):
+                    output.writelines(str(sudoku.table[i][j].possibilities))
+                output.writelines("\n")
+            output.writelines("\n")
+
+    print("{} % of the sudokus are solved".format(num_of_done / len(listsudoku) * 100))
 
 
 class Cell(object):
@@ -38,9 +97,10 @@ class Cell(object):
     def check_final(self):
         if len(self.possibilities) == 1 and self.final_number is None:
             self.set_final(self.possibilities[0])
-            print(colored("[Found number] ", "green") + "Find a final number {} in cell ({}, {})".format(
-                self.possibilities[0], self.row_index, self.col_index))
-            print('------------------------------------------------------')
+            if verbose:
+                print(colored("[Found number] ", "green") + "Find a final number {} in cell ({}, {})".format(
+                    self.possibilities[0], self.row_index, self.col_index))
+                print('------------------------------------------------------')
 
 
 class Sudoku(object):
@@ -64,16 +124,20 @@ class Sudoku(object):
                 cell.col_index = j
                 cell.table = self
 
-    def fill_example(self, example_table):
+    def fill_example(self, examplee_table):
+        # print(example_table)
         for i, row in enumerate(self._table):
             for j, number in enumerate(row):
-                print(j)
-                if example_table[i][j] is not None:
-                    self._table[i][j].set_final(example_table[i][j])
-        print("End of filling example.")
-        print(example_table)
-        print(self.print_possibilities())
-        print("#################################################################")
+                # print("i:" + str(i) + " j:" + str(j))
+                if examplee_table[i][j] == ".":
+                    continue
+                if examplee_table[i][j] is not None:
+                    self._table[i][j].set_final(examplee_table[i][j])
+        if verbose:
+            print("End of filling example.")
+            print(examplee_table)
+            self.print_possibilities()
+            print("#################################################################")
 
     def print_possibilities(self):
         for row in self._table:
@@ -152,13 +216,15 @@ class Sudoku(object):
 
         same_indices = [i]
         for index in range(len(self._table)):
-            if index != i and len(self._table[index][j].possibilities) > 1 and self._table[index][j].possibilities == self._table[i][j].possibilities:
+            if index != i and len(self._table[index][j].possibilities) > 1 and self._table[index][j].possibilities == \
+                    self._table[i][j].possibilities:
                 same_indices.append(index)
 
         if len(same_indices) == length:
             for number in self._table[i][j].possibilities:
                 for index in range(len(self._table)):
-                    if index not in same_indices and number in self._table[index][j].possibilities and len(self._table[index][j].possibilities) > 1:
+                    if index not in same_indices and number in self._table[index][j].possibilities and len(
+                            self._table[index][j].possibilities) > 1:
                         self._table[index][j].remove_possibility(number)
 
     def intermediate_elimination_cube(self, i, j):
@@ -168,14 +234,17 @@ class Sudoku(object):
         same_indices = [(i, j)]
         for row_index, row in enumerate(self._table):
             for col_index, cell in enumerate(row):
-                if cell.cube_id == cube_id and not (row_index == i and col_index == j) and len(cell.possibilities) > 1 and cell.possibilities == self._table[i][j].possibilities:
+                if cell.cube_id == cube_id and not (row_index == i and col_index == j) and len(
+                        cell.possibilities) > 1 and cell.possibilities == self._table[i][j].possibilities:
                     same_indices.append((row_index, col_index))
 
         if len(same_indices) == length:
             for number in self._table[i][j].possibilities:
                 for row_index, row in enumerate(self._table):
                     for col_index, cell in enumerate(row):
-                        if cell.cube_id == cube_id and (row_index, col_index) not in same_indices and number in cell.possibilities and len(cell.possibilities) > 1:
+                        if cell.cube_id == cube_id and (
+                                row_index, col_index) not in same_indices and number in cell.possibilities and \
+                                len(cell.possibilities) > 1:
                             cell.remove_possibility(number)
 
     def check_table(self):
@@ -186,41 +255,43 @@ class Sudoku(object):
                     cell.check_final()
             if not self.changed:
                 break
+        if verbose:
+            self.print_possibilities()
 
-        self.print_possibilities()
+    def isitdone(self):
+        done = True
+        for row in self._table:
+            for cell in row:
+                if cell.final_number is None:
+                    done = False
+        return done
 
 
 if __name__ == "__main__":
-    sudoku = Sudoku()
-    """
-    example_table = [[None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, None, None, None, None, None, None, None, None]]
-    """
-    example_table = [[None, 2, None, None, None, 5, None, None, None],
-                     [None, 1, 5, None, None, None, None, None, None],
-                     [None, None, None, None, None, 8, 7, None, 3],
-                     [None, 5, 1, None, None, None, None, None, None],
-                     [None, None, 9, 7, None, None, None, 1, None],
-                     [None, None, None, 3, None, None, None, 4, 6],
-                     [None, None, None, None, 8, None, None, None, 1],
-                     [7, None, None, 9, 3, None, None, 6, None],
-                     [None, None, None, None, None, None, 4, None, 8]]
-    example_table = [[None, None, 2, 3, None, None, None, None, None],
-                     [None, 6, 4, None, None, None, 9, None, None],
-                     [None, None, None, None, None, None, None, None, None],
-                     [None, 1, 7, None, None, None, None, None, 6],
-                     [None, None, None, 7, None, None, 2, 1, None],
-                     [None, 9, None, None, 8, None, None, None, 4],
-                     [None, 8, None, None, 4, None, None, None, None],
-                     [None, None, None, None, 6, 8, None, 7, 1],
-                     [1, None, None, None, 3, 9, None, 4, None]]
+    # sudoku = Sudoku()
+    # """
+    # example_table = [[None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, None, None, None, None]]
+    # """
+    # example_table = [[None, 2, None, None, None, 5, None, None, None],
+    #                  [None, 1, 5, None, None, None, None, None, None],
+    #                  [None, None, None, None, None, 8, 7, None, 3],
+    #                  [None, 5, 1, None, None, None, None, None, None],
+    #                  [None, None, 9, 7, None, None, None, 1, None],
+    #                  [None, None, None, 3, None, None, None, 4, 6],
+    #                  [None, None, None, None, 8, None, None, None, 1],
+    #                  [7, None, None, 9, 3, None, None, 6, None],
+    #                  [None, None, None, None, None, None, 4, None, 8]]
 
-    sudoku.fill_example(example_table)
-    sudoku.check_table()
+    listsudoku = read_input("input")
+    make_output(listsudoku)
+
+    print("Done!!!")
+
