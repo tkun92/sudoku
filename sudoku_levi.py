@@ -290,13 +290,9 @@ class Sudoku(object):
         row_index = None
         col_index = None
 
-        # cube_id = (i // 3) * 3 + (j // 3)
-        base_row_index = (cube_id // 3) * 3
-        base_col_index = (cube_id % 3) * 3
-
-        for i in range(base_row_index, base_row_index + 3):
-            for j in range(base_col_index, base_col_index + 3):
-                if num in self._table[i][j].possibilities:
+        for i, row in enumerate(self._table):
+            for j, cell in enumerate(row):
+                if cell.cube_id == cube_id and num in cell.possibilities:
                     num_counter += 1
                     row_index = i
                     col_index = j
@@ -307,6 +303,76 @@ class Sudoku(object):
         if num_counter == 1 and len(self._table[row_index][col_index].possibilities) > 1:
             self._table[row_index][col_index].possibilities = [num]
             self.changed = True
+
+    """Final result check"""
+
+    def final_check(self):
+        for row_index in range(9):
+            done = self.final_check_row(row_index)
+            if not done:
+                return False
+
+        for col_index in range(9):
+            done = self.final_check_col(col_index)
+            if not done:
+                return False
+
+        for cube_id in range(9):
+            done = self.final_check_cube(cube_id)
+            if not done:
+                return False
+
+        return True
+
+    def final_check_row(self, row_index):
+        check_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+        for cell in self._table[row_index]:
+            assert len(cell.possibilities) == 1
+            assert cell.final_number is not None
+
+            try:
+                check_list.remove(cell.final_number)
+            except ValueError:
+                # Try to remove one number two times!
+                return False
+
+        assert len(check_list) == 0
+        return True
+
+    def final_check_col(self, col_index):
+        check_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+        for index in range(len(self._table)):
+            assert len(self._table[index][col_index].possibilities) == 1
+            assert self._table[index][col_index].final_number is not None
+
+            try:
+                check_list.remove(self._table[index][col_index].final_number)
+            except ValueError:
+                # Try to remove one number two times!
+                return False
+
+        assert len(check_list) == 0
+        return True
+
+    def final_check_cube(self, cube_id):
+        check_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+        for row in self._table:
+            for cell in row:
+                if cell.cube_id == cube_id:
+                    assert len(cell.possibilities) == 1
+                    assert cell.final_number is not None
+
+                    try:
+                        check_list.remove(cell.final_number)
+                    except ValueError:
+                        # Try to remove one number two times!
+                        return False
+
+        assert len(check_list) == 0
+        return True
 
     def table_possibilities_elimination(self):
         for row_index, row in enumerate(self._table):
@@ -331,11 +397,12 @@ class Sudoku(object):
             self.print_possibilities()
 
     def isitdone(self):
-        done = True
         for row in self._table:
             for cell in row:
                 if cell.final_number is None:
-                    done = False
+                    return False
+
+        done = self.final_check()
         return done
 
 
