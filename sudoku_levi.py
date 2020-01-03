@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 verbose = False
 debug = True
+intermediate = False
 
 
 def read_input(file_name):
@@ -312,7 +313,7 @@ class Sudoku(object):
             for col_index, cell in enumerate(row):
                 if len(cell.possibilities) == 1:
                     self.eliminate_possibilities(row_index, col_index, cell.possibilities[0])
-                else:
+                elif intermediate:
                     self.intermediate_eliminate_possibilities(row_index, col_index)
 
         for num in range(1, 10):
